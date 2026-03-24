@@ -1,11 +1,13 @@
 ---
-name: figma-design-review
-description: Review Figma boards, screens, or components for design-system integration drift. Use when given a Figma URL or fileKey/nodeId and asked to audit whether shared components, variants, tokens, or navigation primitives are being used correctly.
+name: audit-design-system
+description: Audit a Figma screen or component for design-system integration drift, including missing shared components, local overrides, and unbound tokens.
 ---
 
-# Figma Design Review
+# Audit Design System
 
 Review a Figma node for evidence that the design is not properly integrated with the design system.
+
+This skill is read-only. When the user wants a write action afterward, downstream skills should use `use_figma` through a `figma-use`-style helper when the host environment requires one.
 
 ## Output Format Selection
 
@@ -29,14 +31,24 @@ Review a Figma node for evidence that the design is not properly integrated with
    Call `get_variable_defs` to see which variables are actually bound.
    Call `get_code_connect_map` when relevant.
    Call `get_metadata` when the reviewed node is large, repeated, or board-like and you need to map nested instances before drilling in.
+   Call `search_design_system` when you have identified a likely non-systemized primitive and there is a realistic chance of suggesting a concrete replacement from the audited design system.
 
 3. Review for systemization failures, not visual taste.
    Look for places where the design should probably inherit from the design system but is locally constructed instead.
    Base every finding on structure visible in Figma: instances, duplicated frames, raw values, variant drift, or missing token bindings.
    Prefer omissions over weak findings.
 
-4. Present findings in the appropriate format based on the environment.
+4. When the evidence is strong enough, suggest a replacement candidate.
+   After identifying a likely custom primitive, use `search_design_system` to find the closest matching component family from the audited design system.
+   Include a candidate only when the match is credible from structure and naming, not just screenshot similarity.
+   If search results are noisy or ambiguous, omit the candidate instead of guessing.
+
+5. Present findings in the appropriate format based on the environment.
    Use JSON for Codex Desktop and machine-consumed review surfaces, markdown for Claude Code CLI and other chat-style environments (see Output Format Selection above).
+
+6. When the user wants a fix, route to the right downstream skill.
+   Prefer [fix-design-system-finding](../fix-design-system-finding/SKILL.md) when one specific offending node should be repaired.
+   Prefer [apply-design-system](../apply-design-system/SKILL.md) when the user wants a broader screen-wide pass, multiple sections need coordinated remediation, or the review is being used to define scope before writing.
 
 ## What To Flag
 
@@ -84,6 +96,30 @@ Weak evidence includes:
 - "I would normally make this a component"
 - any statement based only on screenshot aesthetics without structural support
 
+## Replacement Suggestion Rule
+
+When a finding is about a missing shared primitive, try to attach one likely replacement suggestion.
+
+Use `search_design_system` after you already know what category of thing is missing, for example:
+- custom avatar cluster
+- bespoke stat tile
+- local alert card
+- hand-built navigation item
+
+Only suggest a replacement when:
+- the node's role is clear
+- the search result belongs to the relevant library or audited file context
+- the candidate is structurally plausible for the finding
+
+Good suggestion language:
+- `This custom avatar frame could likely be replaced with Avatar from library X.`
+- `These repeated stat tiles appear to map to Metric item from library X.`
+
+Do not overstate:
+- do not claim the suggested component is definitely correct unless the evidence is explicit
+- do not force a replacement candidate into every finding
+- do not recommend a component from an unrelated library just because search returned it first
+
 ## Output Format
 
 ### JSON Output
@@ -99,7 +135,7 @@ When the selected output format is JSON, return this exact JSON shape with no ma
       "confidence_score": 0.0,
       "priority": 0,
       "code_location": {
-        "absolute_file_path": "https://www.figma.com/design/<fileKey>/nodes/<nodeId>",
+        "absolute_file_path": "/figma/<fileKey>/nodes/<nodeId>",
         "line_range": {
           "start": 1,
           "end": 1
@@ -140,6 +176,7 @@ When the selected output format is markdown, present a formatted markdown report
 4. **Details section:** Expand each finding with:
    - What's wrong (concrete evidence from Figma structure)
    - Why it matters (maintenance, consistency, theming impact)
+   - Likely replacement, when supported by `search_design_system`
    - Affected node IDs for reference
 
 5. **Recommendations:** Prioritized action items
@@ -150,6 +187,7 @@ When the selected output format is markdown, present a formatted markdown report
 - Keep titles imperative and under 80 characters.
 - Always anchor each finding to a specific node ID so users can locate it in Figma.
 - For JSON output, do not invent filesystem paths. Use `/figma/<fileKey>/nodes/<nodeId>` exactly.
+- When a replacement suggestion is credible, include it in the finding body.
 
 ## Review Heuristics
 
@@ -185,5 +223,13 @@ For a board or larger page:
 - "Review this Figma screen for design-system integration"
 - "Audit this board for missing component usage"
 - "Check whether this design uses tokens correctly"
-- "/figma-design-review https://figma.com/design/..."
-- "/figma-design-review --json https://figma.com/design/..." (for JSON output)
+- "/audit-design-system https://figma.com/design/..."
+- "/audit-design-system --json https://figma.com/design/..." (for JSON output)
+
+## Handoff Guidance
+
+Use this routing rule after the review:
+- one concrete finding with a narrow write scope: use [fix-design-system-finding](../fix-design-system-finding/SKILL.md)
+- several findings that collapse into a broader screen or section reconciliation pass: use [apply-design-system](../apply-design-system/SKILL.md)
+
+Do not force every review result through the single-finding fix skill. Some reviews are better used as scope discovery for a broader apply pass.

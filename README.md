@@ -1,55 +1,85 @@
-# Codex Skills
+# Figma Design System Skills
 
-This repository is a home for reusable Codex skills.
+This repository packages reusable Figma design-system workflows as portable skills.
 
-Each skill is a self-contained folder that can be copied into a Codex skills directory and shared with other teams. The first skill in this repository is `figma-design-review`, a Figma review skill that inspects screens for design-system integration drift and returns review findings in the schema Codex desktop can render as review cards.
+The canonical source lives in [`skills/`](skills/). The repo also exposes the same skills through project-local Claude Code entries in [`.claude/skills/`](.claude/skills/), so the same checkout can be used in both Codex and Claude Code.
+
+## Included Skills
+
+- `apply-design-system`
+  Review an existing design and connect it to design system components.
+- `audit-design-system`
+  Audit a Figma screen or component for design-system integration drift, including missing shared components, local overrides, and unbound tokens.
+- `fix-design-system-finding`
+  Fix a specific design-system integration finding in a Figma screen or component, including missing shared components, local overrides, and unbound tokens.
 
 ## Repository Layout
 
 ```text
 .
 ├── README.md
-└── skills/
-    └── figma-design-review/
-        ├── SKILL.md
-        └── agents/
-            └── openai.yaml
+├── skills/
+│   ├── apply-design-system/
+│   ├── audit-design-system/
+│   └── fix-design-system-finding/
+└── .claude/
+    └── skills/
+        ├── apply-design-system -> ../../skills/apply-design-system
+        ├── audit-design-system -> ../../skills/audit-design-system
+        └── fix-design-system-finding -> ../../skills/fix-design-system-finding
 ```
 
-## Adding More Skills
+Each skill folder contains:
 
-Add each new skill under `skills/<skill-name>/`.
+- `SKILL.md`: shared instructions that work across tools using the open Agent Skills format
+- `agents/openai.yaml`: Codex/OpenAI UI metadata; safe for other tools to ignore
 
-Recommended structure:
+## Prerequisites
 
-```text
-skills/
-  <skill-name>/
-    SKILL.md
-    agents/
-      openai.yaml
-    scripts/        # optional
-    references/     # optional
-    assets/         # optional
-```
+These skills assume the host environment already has Figma access set up. In practice that means:
 
-Guidelines:
+- Figma MCP read tools such as `get_design_context`, `get_screenshot`, `get_metadata`, `get_variable_defs`, and `search_design_system`
+- Figma write access via `use_figma`
+- a helper skill or built-in workflow that teaches safe `use_figma` usage, if your environment requires one
 
-- Keep each skill self-contained.
-- Put trigger rules and workflow in `SKILL.md`.
-- Keep UI metadata in `agents/openai.yaml`.
-- Add optional `scripts/`, `references/`, and `assets/` only when the skill needs them.
+This repository does not vendor the full Figma helper stack. It contains the design-system workflows themselves.
 
-## Installing A Skill
+## Use In Codex
 
-Copy the desired skill folder into your Codex skills directory:
+Copy the skills you want into your Codex skills directory:
 
 ```bash
-cp -R skills/figma-design-review ~/.codex/skills/
+mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills"
+cp -R skills/* "${CODEX_HOME:-$HOME/.codex}/skills/"
 ```
 
-If `CODEX_HOME` is set in your environment, copy it into `$CODEX_HOME/skills/` instead.
+After that, the skills are available as:
 
-## Current Skills
+- `$apply-design-system`
+- `$audit-design-system`
+- `$fix-design-system-finding`
 
-- `figma-design-review`: Review Figma boards, screens, or components for design-system integration drift.
+Codex uses the `agents/openai.yaml` files for display names, descriptions, and default prompts.
+
+## Use In Claude Code
+
+Claude Code already discovers project-local skills from [`.claude/skills/`](.claude/skills/), so opening this repository in Claude Code is enough to make the three skills available as slash commands:
+
+- `/apply-design-system`
+- `/audit-design-system`
+- `/fix-design-system-finding`
+
+If you want them available across all projects instead, copy the same folders into `~/.claude/skills/`.
+
+Claude Code reads `SKILL.md` and ignores the Codex-specific `agents/openai.yaml` metadata.
+
+## Editing And Publishing
+
+Edit the canonical files under [`skills/`](skills/). The Claude Code entries are symlinks to those same directories, so there is only one source of truth per skill.
+
+When adding a new skill, use the same pattern:
+
+1. Create `skills/<skill-name>/SKILL.md`
+2. Add `skills/<skill-name>/agents/openai.yaml` if Codex UI metadata is needed
+3. Add a matching symlink under `.claude/skills/`
+4. Document the skill here

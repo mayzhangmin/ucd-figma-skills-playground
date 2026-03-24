@@ -1,4 +1,0 @@
-interface:
-  display_name: "Figma Design Review"
-  short_description: "Review Figma screens for design-system integration drift."
-  default_prompt: "Review this Figma link for missing component, token, or variant usage. Return the Codex review JSON schema so each finding can be passed on."
