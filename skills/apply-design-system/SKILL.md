@@ -69,6 +69,16 @@ These rules are mandatory because reconnection often appears correct in properti
    - `componentProperties` proves the override request.
    - descendant `TEXT` or `FRAME` visibility proves what is actually rendered.
    - section-level inspection proves there are no duplicate detached nodes left around the instance.
+7. Treat font-gated dry runs as a strategy issue, not automatically as a library blocker.
+  - Cloning, duplicating, or appending an existing legacy node with text may require access to that legacy node's current fonts.
+  - That does not by itself prove the target design-system component cannot be imported or used.
+  - When a direct library validation path exists, prefer importing a fresh library instance, inspecting its real property schema, or replacing the live node in a backed-up scope instead of duplicating the old node first.
+  - Only use clone-and-swap dry runs when you specifically need override-carryover evidence and the legacy fonts are available.
+8. Treat stale canvas text as a repaint problem until proven otherwise.
+  - If visible descendant `TEXT` nodes contain the intended copy but the canvas or screenshot still shows placeholders, do not assume the override failed.
+  - Prefer editing the live visible descendant `TEXT` nodes directly over relying only on exposed text properties when the component family is known to repaint inconsistently.
+  - Before concluding that manual interaction is required, switch to the target frame's actual page, focus the updated instances or text nodes there, and re-check the rendered output.
+  - Distinguish a render invalidation issue from a real data-write failure: live descendant text proves the write; screenshot or canvas mismatch proves repaint is still pending.
 
 ## Required Workflow
 
@@ -242,6 +252,38 @@ For each section in dependency order:
 7. Return all mutated node IDs and screenshot immediately. Do not batch multiple sections into one script.
 8. Validate with `get_screenshot` before moving to the next section.
 
+Dry-run guidance:
+- If you only need to inspect the target library family, import a fresh library instance and inspect that instance directly.
+- If the current screen uses fonts unavailable to the plugin runtime, avoid clone-based dry runs of legacy text-bearing nodes unless they are strictly necessary.
+- If a direct replacement path is available and the screen has already been backed up, prefer section-by-section live replacement plus immediate screenshot validation over duplicating the old section just to test the swap.
+- Treat font errors from touching the old node as a signal to change validation strategy, not as automatic evidence that the migration is blocked.
+
+Repaint guidance:
+- If descendant `TEXT` nodes are correct but the section still renders placeholder copy, first classify the problem as repaint-pending rather than failed migration.
+- Prefer updating the visible descendant `TEXT` nodes directly when exposed text properties do not repaint reliably.
+- Run the refresh recipe on the section's actual page before deciding that the repaint is blocked.
+
+Refresh recipe:
+1. Write the intended copy onto the live visible descendant `TEXT` nodes.
+2. Resolve the section's containing page and call `await figma.setCurrentPageAsync(page)`.
+3. Select each updated instance on that page, one at a time.
+4. Call `figma.viewport.scrollAndZoomIntoView([node])` for the selected node.
+5. If the canvas is still stale, toggle `node.visible = false` and then `node.visible = true`.
+6. Re-run the close-up screenshot for that section before deciding whether the repaint worked.
+
+Example repaint pass:
+
+```js
+await figma.setCurrentPageAsync(targetPage);
+
+for (const node of updatedNodes) {
+  figma.currentPage.selection = [node];
+  figma.viewport.scrollAndZoomIntoView([node]);
+  node.visible = false;
+  node.visible = true;
+}
+```
+
 When the parent is not auto-layout, treat replacement as a layout-risk operation:
 - preserve `x` and `y` explicitly
 - preserve width and height explicitly when the replacement should occupy the same footprint
@@ -273,6 +315,11 @@ Treat these as real blockers:
 - only nested primitives can be imported, not the intended composite
 - the key is a component-set key, not a component key, and component-set imports are not supported in your Figma version
 
+Do not misclassify these as import blockers:
+- a font-loading failure caused by cloning or appending the existing legacy node during a dry run
+- an unavailable legacy font encountered while trying to duplicate the pre-migration section for comparison
+- any font issue that occurs before the target design-system component import itself is attempted
+
 Blocker report format:
 - Component: name
 - Blocker Type: import failure, timeout, missing, permission, or unpublished
@@ -301,6 +348,11 @@ Screenshot validation:
 2. Compare side-by-side with the original screenshot from Step 2.
 3. Look for spacing drift, text clipping, icon alignment, color shifts, and effect loss.
 4. If any regression appears, stop and fix it before proceeding.
+
+If the screenshot still shows stale placeholder text but the live descendant `TEXT` nodes are correct:
+1. Re-run validation on the section's actual page, not whichever page the plugin last had open.
+2. Run the refresh recipe and re-check the screenshot.
+3. Report the result as `repaint-pending` rather than `blocked` when the write is correct but the canvas still has not refreshed.
 
 After all sections are complete:
 - take a full-frame screenshot and compare with the original backup

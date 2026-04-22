@@ -90,6 +90,75 @@ During the base skill's validation steps, add these Bee-specific checks:
 - Bee-DS inputs and dropdowns often carry their own internal title or label structure, so detached text outside the instance is a common migration artifact
 - Bee-DS button family changes are not just style changes; `Secondary button` and `Tertiary button` are different replacement targets
 
+## Bee-DS Section Strategy Guide
+
+Use the base skill's section buckets, but apply them with Bee-specific meaning.
+
+### `exact-swap`
+
+Use `exact-swap` when Bee-DS already publishes a component that matches the section's role and structure closely enough to replace it directly.
+
+Quick test:
+- the existing section and the Bee component do the same job
+- the Bee component already has the right internal structure, not just the right styling
+- the section can be replaced by one Bee instance or one compatible family swap without rebuilding the layout from smaller pieces
+
+Typical Bee examples:
+- a custom benefit row replaced by Bee `List`
+- a local or detached nav section replaced by Bee `Top navigation` or `App native top navigation`
+- a medium-emphasis outlined action replaced by a true Bee `Secondary button`
+- a badge-bearing icon cluster replaced by Bee `Icon with badge`
+
+Default preference:
+- prefer `exact-swap` over composition when a published Bee component already exists for the section
+- if a Bee-converted reference frame already exists in the same file, reuse that exact family and variant before searching broadly again
+
+### `compose-from-primitives`
+
+Use `compose-from-primitives` when no single Bee component exists for the full section, but Bee provides the smaller pieces needed to rebuild it cleanly.
+
+Quick test:
+- no one Bee component matches the whole section
+- Bee does provide the internal building blocks
+- the section can be rebuilt from Bee instances without inventing custom visual styling to fake the system
+
+Typical Bee examples:
+- a summary block made of title, badge, metrics, and actions rebuilt from Bee text, badge, and button primitives
+- a wrapper section that groups several already-Bee child components but is not itself a Bee component
+- a custom content panel rebuilt from Bee list rows, icons, and buttons because Bee does not ship that exact domain container
+
+Guardrails:
+- do not call something `compose-from-primitives` if the work really depends on keeping bespoke local styling; that is usually `blocked` or intentionally custom
+- if the wrapper is legacy but the important children are already Bee-backed, first decide whether the wrapper actually needs rewriting or can remain `already-connected` for the user's goal
+
+### `already-connected`
+
+Use `already-connected` when the section is already a Bee library instance, or when the section is a wrapper the user is comfortable keeping because the meaningful child content is already Bee-backed.
+
+Typical Bee examples:
+- a button area whose primary and secondary actions are already real Bee button instances
+- a section that is already composed from Bee instances and only needs audit confirmation, not rebuilding
+
+### `blocked`
+
+Use `blocked` when Bee-DS does not expose the required composite or primitive set, or when import/runtime constraints prevent a reliable migration.
+
+Typical Bee examples:
+- a required family or icon cannot be imported
+- a section depends on fonts or legacy-node operations that the runtime cannot access
+- the screen pattern is product-specific and Bee does not provide a safe canonical replacement
+
+### Practical Decision Order
+
+For each section, decide in this order:
+1. Is it already Bee-backed enough to count as `already-connected`?
+2. If not, does Bee publish one component for this exact job? If yes, use `exact-swap`.
+3. If not, can the section be rebuilt cleanly from Bee pieces? If yes, use `compose-from-primitives`.
+4. If not, classify it as `blocked` and explain why.
+
+When in doubt, prefer the lowest-risk valid choice in this order:
+`already-connected` -> `exact-swap` -> `compose-from-primitives` -> `blocked`
+
 ## Bee-DS-Specific Pitfalls
 
 ### Detached Labels Beside Fields
