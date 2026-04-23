@@ -1,6 +1,6 @@
 ---
 name: apply-bee-ds-toolkit
-description: "Use when migrating an existing Figma screen, frame, or section onto Bee-DS Toolkit, including Bee-DS library selection, Bee-specific family choice for buttons and fields, Bee icon handling, and cleanup of detached text around Bee-backed sections."
+description: "Use when actively migrating or rebuilding an existing Figma screen, frame, or section onto Bee-DS Toolkit after the relevant Bee families are known or being verified. Trigger for requests such as 'apply Bee-DS', 'move this screen to Bee-DS', 'connect this frame to Bee-DS', 'replace local Figma sections with Bee components', or 'rebuild this screen with Bee-DS components'. This skill is for execution and migration work, not for broad Bee design judgment or general live library lookup."
 ---
 
 # Apply Bee-DS Toolkit To An Existing Design
@@ -20,8 +20,37 @@ Follow the full migration workflow in [apply-design-system](../apply-design-syst
 ## Load First
 
 - [apply-design-system](../apply-design-system/SKILL.md)
+- [bee-ds-live-lookup](../bee-ds-live-lookup/SKILL.md) when the exact Bee family, variant, token, or icon still needs live lookup from Figma
+- [bee-ds-design-guide](../bee-ds-design-guide/SKILL.md) when the task needs Bee screen-structure, spacing, or pattern judgment before writing
 - `figma-use` before any `use_figma` write call
 - normal Figma MCP inspection tools such as `get_metadata`, `get_screenshot`, and `search_design_system`
+
+## Skill Boundary
+
+This skill sits after lookup and design judgment.
+
+Use:
+- [bee-ds-live-lookup](../bee-ds-live-lookup/SKILL.md) to discover the exact live Bee asset, family, variant, token, or icon in Figma
+- [bee-ds-design-guide](../bee-ds-design-guide/SKILL.md) to decide which Bee pattern, spacing rule, or screen structure should be preferred
+- this skill to actually migrate, swap, compose, reconnect, and clean up the Figma section using Bee-DS
+
+Do not use this skill as the primary place to maintain general Bee screen-design rules or long-lived Bee library inventories.
+
+## Recommended Bee Skill Order
+
+When a task spans discovery, design judgment, and implementation, use the Bee skills in this order:
+
+1. `bee-ds-live-lookup`
+	- confirm what Bee publishes right now
+	- find the exact family, variant, token, or icon
+2. `bee-ds-design-guide`
+	- decide which Bee pattern fits the screen or section best
+	- decide spacing, composition, and canonical screen structure
+3. `apply-bee-ds-toolkit`
+	- perform the migration or rebuild
+	- validate rendered Bee instances and remove detached legacy artifacts
+
+If the family is already known and the design judgment is straightforward, this skill can be loaded directly with [apply-design-system](../apply-design-system/SKILL.md).
 
 ## Bee-DS Target Libraries
 
